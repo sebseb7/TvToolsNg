@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<link rel="icon" href="data:;base64,iVBORw0KGgo=">
+		<script src="https://reference.dashif.org/dash.js/v2.9.3/dist/dash.all.debug.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+		<script src="/socket.io/socket.io.js"></script>
+		<style>
+			body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; }
+		</style>
+		<script>
+			
+
+		</script>
+	</head>
+
+	<body>
+
+		<video controls id="videoPlayer" style="display:none;width:960px;height:960px;"></video>
+		<video controls id="videoHls" style="display:none;width:960px;height:960px;"></video>
+
+		<script>
+			class myLoader extends Hls.DefaultConfig.loader {
+				constructor(config) {
+					super(config);
+					var load = this.load.bind(this);
+					this.load = function (context, config, callbacks) {
+						if(context.url.startsWith('http') && !context.url.startsWith('http://'+host+':8111/')){
+							context.url = 'http://'+host+':8111/'+context.url;
+						}
+						load(context, config, callbacks);
+					};
+				}
+			}
+
+			const host = window.location.hostname;
+			
+			var olog = console.log;
+
+			/*console.log = function (message) {
+				socket.emit('log',message);
+			}*/
+
+			var dash_player = null;
+			var hls_player = null;
+
+			var gurl = '';
+			var gtitle = '';
+				
+			var socket = io('/', { transports: ["websocket"] });
+			socket.on('connect', () => {
+				socket.emit('player_init',window.location.search.substring(1));
+			});
+			socket.on('ctrlinit',() =>{
+				socket.emit('ctrlinit_resp',window.location.search.substring(1),gurl,gtitle);
+			});
+			socket.on('play_dash',(idx,title,ourl,url) =>{
+
+				if(window.location.search.substring(1) == idx){
+					
+					gtitle=title;
+					gurl=ourl;
+					document.getElementById('videoPlayer').style.display='none';
+					document.getElementById('videoHls').style.display='none';
+					var video = document.getElementById('videoHls');
+					video.pause();
+					if(dash_player)
+					{
+						dash_player.reset();
+						dash_player=null;
+					}
+					if(hls_player && hls_player.destroy)
+					{
+						hls_player.destroy();
+					}
+					dash_player = dashjs.MediaPlayer().create();
+					dash_player.initialize(document.querySelector("#videoPlayer"), 'http://'+host+':8111/'+url,false);
+					dash_player.setTextTrack(-1);
+					dash_player.on(dashjs.MediaPlayer.events['CAN_PLAY'],function(){
+							var list = dash_player.getBitrateInfoListFor('video');
+							if(list[dash_player.getQualityFor('video')].width < list[dash_player.getQualityFor('video')].height)
+								document.getElementById("videoPlayer").style.transform = "rotate(90deg)  translateX(-210px)";
+							else
+								document.getElementById("videoPlayer").style.transform = "rotate(0deg)  translateY(-210px)";
+							document.getElementById('videoPlayer').style.display='block';
+							dash_player.play();
+					});
+				};
+
+			});
+			socket.on('play_hls',(idx,title,ourl,url,proxy) =>{
+
+				if(window.location.search.substring(1) == idx){
+					gtitle=title;
+					gurl=ourl;
+					document.getElementById('videoPlayer').style.display='none';
+					document.getElementById('videoHls').style.display='none';
+					var video = document.getElementById('videoHls');
+					video.pause();
+					if(dash_player)
+					{
+						dash_player.reset();
+						dash_player=null;
+					}
+					if(hls_player && hls_player.destroy)
+					{
+						hls_player.destroy();
+					}
+
+					var hls;
+					if(proxy == 'noproxy'){
+						hls= new Hls({backBufferLength:0});
+					}else{
+						hls= new Hls({pLoader: myLoader,fLoader:myLoader,backBufferLength:0});
+					}
+					hls.loadSource(url);
+					hls.attachMedia(video);
+					hls.on(Hls.Events.MANIFEST_PARSED, function() {
+						var promise = video.play();
+						
+						document.getElementById("videoHls").style.transform = "rotate(0deg)  translateY(-210px)";
+
+						if (promise !== undefined) {
+							promise.then(_ => {
+							}).catch(error => {
+							});
+						}
+					});
+					hls.on(Hls.Events.ERROR, function (event, data) {
+						console.log(idx+' hlserror: '+JSON.stringify(data,null,2));
+// END:						browser:hlserror: {
+//  "type": "mediaError",
+//  "details": "bufferStalledError",
+//  "fatal": false,
+//  "buffer": 0.0936029999998027
+//}
+
+					});
+					video.onplay = function() {
+					};
+					video.onplaying = function() {
+						document.getElementById('videoHls').style.display='block';
+					};
+					hls_player=hls;
+				};
+
+			});
+			socket.on('stop',(idx) =>{
+
+				if(window.location.search.substring(1) == idx){
+					document.getElementById('videoPlayer').style.display='none';
+					document.getElementById('videoHls').style.display='none';
+					var video = document.getElementById('videoHls');
+					video.pause();
+					if(dash_player)
+					{
+						dash_player.reset();
+						dash_player=null;
+					}
+					if(hls_player && hls_player.destroy)
+					{
+						hls_player.destroy();
+						hls_player = null;
+					}
+
+				};
+
+			});
+		</script>
+	</body>
+</html>
+
+

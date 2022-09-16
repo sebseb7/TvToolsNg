@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<link rel="icon" href="data:;base64,iVBORw0KGgo=">
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.min.css" integrity="sha512-xiunq9hpKsIcz42zt0o2vCo34xV0j6Ny8hgEylN3XBglZDtTZ2nwnqF/Z/TTCc18sGdvCjbFInNd++6q3J0N6g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+		<style>
+			body {
+				font-size:1.5em;
+				background-color:#005050;
+			}
+			.button,input[type='text'] {
+				background-color:#ffffff;
+				height: 2.8rem;
+				line-height: 2.8rem;
+			}
+			.button.button-outline {
+				background-color:#c0ffff;
+			}
+			.button.button-outline:hover {
+				background-color:#c0ffff;
+			}
+			.button.button-outline:focus {
+				background-color:#c0ffff;
+			}
+			.button-slim {
+				padding-left:0;
+				padding-right:0;
+				width:3rem;
+			}
+			.button-active {
+				background-color:#c0cfcf !important;
+			}
+			.container {
+				max-width: 162.0rem;
+				user-select: none;
+			}
+			.rangeslider {
+				height: 0.7rem;
+			}
+			.switch {
+				position: relative;
+				display: inline-block;
+				width: 5.4rem;
+				height: 2.7rem;
+			}
+
+			span.label {
+				color:white;
+				font-weight:bold;
+				margin-right:1rem;
+			}
+			.switch input {
+				opacity: 0;
+				width: 0;
+				height: 0;
+			}
+
+			.slider {
+				position: absolute;
+				cursor: pointer;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				background-color: #ccc;
+				transition: .4s;
+				border-radius: 34px;
+			}
+
+			.slider:before {
+				position: absolute;
+				content: "";
+				height: 2.0rem;
+				width: 2.0rem;
+				left: 0.36rem;
+				bottom: 0.355rem;
+				background-color: white;
+				transition: .4s;
+				border-radius: 50%;
+			}
+
+			input:checked + .slider {
+				background-color: #2196F3;
+			}
+
+			input:focus + .slider {
+				box-shadow: 0 0 1px #2196F3;
+			}
+
+			input:checked + .slider:before {
+				transform: translateX(26px);
+			}
+		</style>
+		<script src="/socket.io/socket.io.js"></script>
+		<script>
+			var socket;
+
+			function init(){
+				socket = io('/', { transports: ["websocket"] });
+				socket.on('connect', () => {
+					socket.emit('ctrlinit');
+					socket.emit('getGrid',(gridStore)=>{
+						for(var grid of Object.keys(gridStore)){
+							for(var x in gridStore[grid]){
+								for(var y in gridStore[grid][x]){
+									document.getElementById(grid+'_'+(parseInt(x)+1)+'_'+(parseInt(y)+1),gridStore[grid][x][y]).innerHTML=gridStore[grid][x][y];
+								}
+							}
+						}
+					});
+				});
+				socket.on('state',(idx,text) =>{
+					document.getElementById('state'+idx).value = text;
+				});
+				socket.on('ctrlinit_resp',(idx,url,text) =>{
+					document.getElementById('url'+idx).value = url;
+					document.getElementById('state'+idx).value = text;
+				});
+				socket.on('player_init',(idx) =>{
+					document.getElementById('state'+idx).value = '';
+				});
+			}
+			function load(index){
+				const url = document.getElementById('url'+index).value;
+				document.getElementById('state'+index).value = '';
+				socket.emit('load',index,url);
+			}
+			function stop(index){
+				document.getElementById('state'+index).value = '';
+				socket.emit('stop',index);
+			}
+			var activeItem = 'X';
+			function selectButton(elem){
+				const idx = elem.id.substring(14);
+				for(const i of ['X','1','2','3','4','5','6','7','8','9','10']){
+					document.getElementById("buttonSelector"+i).classList.remove('button-active');
+				}
+				activeItem=idx;
+				document.getElementById("buttonSelector"+idx).classList.add('button-active');
+				elem.blur();
+			}
+			var exchangeMode = false;
+			var exchangeSource = null;
+			function exchange() {
+				exchangeMode=true;
+				document.getElementById("buttonSelectorEX").classList.add('button-active');
+			}
+
+			function activateField(elem){
+				const idx = elem.id.substring(5).split('_');
+				if(exchangeMode){
+					if(exchangeSource == undefined){
+						exchangeSource = document.getElementById('grid_'+idx[0]+'_'+idx[1]+'_'+idx[2]).innerHTML;
+					}else{
+						exchangeMode = false;
+						var exchangeTarget = document.getElementById('grid_'+idx[0]+'_'+idx[1]+'_'+idx[2]).innerHTML;
+
+						if(exchangeSource != exchangeTarget){
+							for(var field of document.getElementsByClassName('button-slim')){
+								if(field.id.startsWith('grid_'+idx[0]+'_')){
+									if(field.innerHTML == exchangeSource){
+										field.innerHTML = exchangeTarget;
+									}
+									else if(field.innerHTML == exchangeTarget){
+										field.innerHTML = exchangeSource;
+									}
+								}
+							}
+						}
+
+						exchangeSource=null;
+						document.getElementById("buttonSelectorEX").classList.remove('button-active');
+						//var gElem={};
+						//gElem.id='grid_'+idx[0];
+						//activateGrid(gElem);
+					}
+				}else{
+					document.getElementById('grid_'+idx[0]+'_'+idx[1]+'_'+idx[2]).innerHTML=activeItem;
+				}
+				elem.blur();
+			}
+			function activateGrid(elem){
+				if((elem.id == 'grid_1')||(elem.id == 'grid_2')||(elem.id == 'grid_3')){
+					socket.emit('grid','4x4',
+						[[document.getElementById(elem.id+'_1_1').innerHTML,
+						document.getElementById(elem.id+'_1_2').innerHTML,
+						document.getElementById(elem.id+'_1_3').innerHTML,
+						document.getElementById(elem.id+'_1_4').innerHTML],[
+						document.getElementById(elem.id+'_2_1').innerHTML,
+						document.getElementById(elem.id+'_2_2').innerHTML,
+						document.getElementById(elem.id+'_2_3').innerHTML,
+						document.getElementById(elem.id+'_2_4').innerHTML],[
+						document.getElementById(elem.id+'_3_1').innerHTML,
+						document.getElementById(elem.id+'_3_2').innerHTML,
+						document.getElementById(elem.id+'_3_3').innerHTML,
+						document.getElementById(elem.id+'_3_4').innerHTML],[
+						document.getElementById(elem.id+'_4_1').innerHTML,
+						document.getElementById(elem.id+'_4_2').innerHTML,
+						document.getElementById(elem.id+'_4_3').innerHTML,
+						document.getElementById(elem.id+'_4_4').innerHTML]],
+						elem.id
+					);
+				}
+				if((elem.id == 'grid_4')||(elem.id == 'grid_5')||(elem.id == 'grid_6')){
+					socket.emit('grid','3x3',
+						[[document.getElementById(elem.id+'_1_1').innerHTML,
+						document.getElementById(elem.id+'_1_2').innerHTML,
+						document.getElementById(elem.id+'_1_3').innerHTML],[
+						document.getElementById(elem.id+'_2_1').innerHTML,
+						document.getElementById(elem.id+'_2_2').innerHTML,
+						document.getElementById(elem.id+'_2_3').innerHTML],[
+						document.getElementById(elem.id+'_3_1').innerHTML,
+						document.getElementById(elem.id+'_3_2').innerHTML,
+						document.getElementById(elem.id+'_3_3').innerHTML]],
+						elem.id
+					);
+				}
+			}
+			function setVol(elem){
+				socket.emit('volume',elem.id.substring(3),elem.value);
+			}
+			function tweetdeck(elem){
+				socket.emit('tweetdeck',elem.checked);
+			}
+			function clock(elem){
+				socket.emit('clock',elem.checked);
+			}
+			function cube(elem){
+				socket.emit('cube',elem.checked);
+			}
+			function setClockPos(elem){
+				socket.emit('clockPos',elem.value);
+			}
+
+		</script>
+	</head>
+
+	<body>
+		<div class="container">
+			<div class="row"><div class="column column-50">&nbsp;</div></div>
+			<div class="row">
+				<div class="column column-30"><input type="text" placeholder="" value="" id="url1"></div>
+				<div class="column column-20">
+					<button class="button button-outline" onClick="load(1)">Load</button>
+					<button class="button button-outline" onClick="stop(1)">Clear</button>
+					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol1" onInput="setVol(this)">
+				</div>
+				<div class="column"><input type="text" placeholder="" disabled id="state1"></div>
+				<div class="column"><input type="text" placeholder="" disabled id="info1"></div>
+			</div>
+			<div class="row">
+				<div class="column column-30"><input type="text" placeholder="" value="" id="url2"></div>
+				<div class="column column-20">
+					<button class="button button-outline" onClick="load(2)">Load</button>
+					<button class="button button-outline" onClick="stop(2)">Clear</button>
+					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol2" onInput="setVol(this)">
+				</div>
+				<div class="column"><input type="text" placeholder="" disabled id="state2"></div>
+				<div class="column"><input type="text" placeholder="" disabled id="info2"></div>
+			</div>
+			<div class="row">
+				<div class="column column-30"><input type="text" placeholder="" value="" id="url3"></div>
+				<div class="column column-20">
+					<button class="button button-outline" onClick="load(3)">Load</button>
+					<button class="button button-outline" onClick="stop(3)">Clear</button>
+					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol3" onInput="setVol(this)">
+				</div>
+				<div class="column"><input type="text" placeholder="" disabled id="state3"></div>
+				<div class="column"><input type="text" placeholder="" disabled id="info3"></div>
+			</div>
+			<div class="row">
+				<div class="column column-30"><input type="text" placeholder="" value="" id="url4"></div>
+				<div class="column column-20">
+					<button class="button button-outline" onClick="load(4)">Load</button>
+					<button class="button button-outline" onClick="stop(4)">Clear</button>
+					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol4" onInput="setVol(this)">
+				</div>
+				<div class="column"><input type="text" placeholder="" disabled id="state4"></div>
+				<div class="column"><input type="text" placeholder="" disabled id="info4"></div>
+			</div>
+			<div class="row">
+				<div class="column column-30"><input type="text" placeholder="" value="" id="url5"></div>
+				<div class="column column-20">
+					<button class="button button-outline" onClick="load(5)">Load</button>
+					<button class="button button-outline" onClick="stop(5)">Clear</button>
+					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol5" onInput="setVol(this)">
+				</div>
+				<div class="column"><input type="text" placeholder="" disabled id="state5"></div>
+				<div class="column"><input type="text" placeholder="" disabled id="info5"></div>
+			</div>
+			<div class="row">
+				<div class="column column-30"><input type="text" placeholder="" value="" id="url6"></div>
+				<div class="column column-20">
+					<button class="button button-outline" onClick="load(6)">Load</button>
+					<button class="button button-outline" onClick="stop(6)">Clear</button>
+					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol6" onInput="setVol(this)">
+				</div>
+				<div class="column"><input type="text" placeholder="" disabled id="state6"></div>
+				<div class="column"><input type="text" placeholder="" disabled id="info6"></div>
+			</div>
+			<div class="row">
+				<div class="column column-30"><input type="text" placeholder="" value="" id="url7"></div>
+				<div class="column column-20">
+					<button class="button button-outline" onClick="load(7)">Load</button>
+					<button class="button button-outline" onClick="stop(7)">Clear</button>
+					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol7" onInput="setVol(this)">
+				</div>
+				<div class="column"><input type="text" placeholder="" disabled id="state7"></div>
+				<div class="column"><input type="text" placeholder="" disabled id="info7"></div>
+			</div>
+			<div class="row">
+				<div class="column column-30"><input type="text" placeholder="" value="" id="url8"></div>
+				<div class="column column-20">
+					<button class="button button-outline" onClick="load(8)">Load</button>
+					<button class="button button-outline" onClick="stop(8)">Clear</button>
+					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol8" onInput="setVol(this)">
+				</div>
+				<div class="column"><input type="text" placeholder="" disabled id="state8"></div>
+				<div class="column"><input type="text" placeholder="" disabled id="info8"></div>
+			</div>
+			<div class="row">
+				<div class="column column-30"><input type="text" placeholder="" value="" id="url9"></div>
+				<div class="column column-20">
+					<button class="button button-outline" onClick="load(9)">Load</button>
+					<button class="button button-outline" onClick="stop(9)">Clear</button>
+					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol9" onInput="setVol(this)">
+				</div>
+				<div class="column"><input type="text" placeholder="" disabled id="state9"></div>
+				<div class="column"><input type="text" placeholder="" disabled id="info9"></div>
+			</div>
+			<div class="row">
+				<div class="column column-30"><input type="text" placeholder="" value="" id="url10"></div>
+				<div class="column column-20">
+					<button class="button button-outline" onClick="load(10)">Load</button>
+					<button class="button button-outline" onClick="stop(10)">Clear</button>
+					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol10" onInput="setVol(this)">
+				</div>
+				<div class="column"><input type="text" placeholder="" disabled id="state10"></div>
+				<div class="column"><input type="text" placeholder="" disabled id="info10"></div>
+			</div>
+			<div class="row"><div class="column column-50">&nbsp;</div></div>
+			<div class="row">
+				<div class="column column-50">
+					<button id="buttonSelectorX" class="button button-outline button-slim button-active" onClick="selectButton(this)">X</button>
+					<button id="buttonSelector1" class="button button-outline button-slim" onClick="selectButton(this)">1</button>
+					<button id="buttonSelector2" class="button button-outline button-slim" onClick="selectButton(this)">2</button>
+					<button id="buttonSelector3" class="button button-outline button-slim" onClick="selectButton(this)">3</button>
+					<button id="buttonSelector4" class="button button-outline button-slim" onClick="selectButton(this)">4</button>
+					<button id="buttonSelector5" class="button button-outline button-slim" onClick="selectButton(this)">5</button>
+					<button id="buttonSelector6" class="button button-outline button-slim" onClick="selectButton(this)">6</button>
+					<button id="buttonSelector7" class="button button-outline button-slim" onClick="selectButton(this)">7</button>
+					<button id="buttonSelector8" class="button button-outline button-slim" onClick="selectButton(this)">8</button>
+					<button id="buttonSelector9" class="button button-outline button-slim" onClick="selectButton(this)">9</button>
+					<button id="buttonSelector10" class="button button-outline button-slim" onClick="selectButton(this)">10</button>
+					<button id="buttonSelectorEX" class="button button-outline" style="margin-left:30px" onClick="exchange()">Swap</button>
+				</div>
+				<div class="column column-50">
+					<span class="label">Clock</span>
+					<label class="switch">
+						<input type="checkbox" onchange="clock(this)">
+						<span class="slider round"></span>
+					</label>
+					<input type="range" min="0" max="3" style="width:80px" value="3" class="rangeslider" id="vol10" onInput="setClockPos(this)">
+					<span style="margin-left:2rem" class="label">Cube</span>
+					<label class="switch">
+						<input type="checkbox" onchange="cube(this)">
+						<span class="slider round"></span>
+					</label>
+					<span style="margin-left:2rem" class="label">Tweetdeck</span>
+					<label class="switch">
+						<input type="checkbox" onchange="tweetdeck(this)">
+						<span class="slider round"></span>
+					</label>
+				</div>
+			</div>
+			<div class="row"><div class="column column-50">&nbsp;</div></div>
+			<div class="row">
+				<div class="column">
+					<button id="grid_1_1_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_1_1_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_1_1_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_1_1_4" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_1_2_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_1_2_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_1_2_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_1_2_4" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_1_3_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_1_3_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_1_3_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_1_3_4" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_1_4_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_1_4_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_1_4_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_1_4_4" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_1" class="button button-outline" onClick="activateGrid(this)">activate</button>
+				</div>
+				<div class="column">
+					<button id="grid_2_1_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_2_1_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_2_1_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_2_1_4" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_2_2_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_2_2_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_2_2_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_2_2_4" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_2_3_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_2_3_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_2_3_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_2_3_4" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_2_4_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_2_4_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_2_4_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_2_4_4" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_2" class="button button-outline" onClick="activateGrid(this)">activate</button>
+				</div>
+				<div class="column">
+					<button id="grid_3_1_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_3_1_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_3_1_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_3_1_4" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_3_2_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_3_2_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_3_2_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_3_2_4" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_3_3_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_3_3_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_3_3_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_3_3_4" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_3_4_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_3_4_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_3_4_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_3_4_4" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_3" class="button button-outline" onClick="activateGrid(this)">activate</button>
+				</div>
+				<div class="column">
+					<button id="grid_4_1_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_4_1_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_4_1_3" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_4_2_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_4_2_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_4_2_3" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_4_3_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_4_3_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_4_3_3" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="" class="button button-outline button-slim" style="visibility:hidden"></button><br/>
+					<button id="grid_4" class="button button-outline" onClick="activateGrid(this)">activate</button>
+				</div>
+				<div class="column">
+					<button id="grid_5_1_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_5_1_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_5_1_3" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_5_2_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_5_2_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_5_2_3" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_5_3_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_5_3_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_5_3_3" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="" class="button button-outline button-slim" style="visibility:hidden"></button><br/>
+					<button id="grid_5" class="button button-outline" onClick="activateGrid(this)">activate</button>
+				</div>
+				<div class="column">
+					<button id="grid_6_1_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_6_1_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_6_1_3" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_6_2_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_6_2_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_6_2_3" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_6_3_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_6_3_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_6_3_3" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="" class="button button-outline button-slim" style="visibility:hidden"></button><br/>
+					<button id="grid_6" class="button button-outline" onClick="activateGrid(this)">activate</button>
+				</div>
+				<div class="column">
+				</div>
+				<div class="column">
+				</div>
+			</div>
+		</div>
+
+		<script>
+			init();
+		</script>
+	</body>
+</html>
+
+
