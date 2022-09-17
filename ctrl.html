@@ -101,6 +101,7 @@
 				socket = io('/', { transports: ["websocket"] });
 				socket.on('connect', () => {
 					socket.emit('ctrlinit');
+					socket.emit('overlayInit');
 					socket.emit('getGrid',(gridStore)=>{
 						for(var grid of Object.keys(gridStore)){
 							for(var x in gridStore[grid]){
@@ -114,9 +115,20 @@
 				socket.on('state',(idx,text) =>{
 					document.getElementById('state'+idx).value = text;
 				});
+				socket.on('volume',(idx,vol) =>{
+					document.getElementById("vol"+idx).value = vol;
+				});
+				socket.on('tweetdeck',(enabled) =>{
+					document.getElementById("tweetdeck").checked = enabled;
+				});
 				socket.on('ctrlinit_resp',(idx,url,text) =>{
 					document.getElementById('url'+idx).value = url;
 					document.getElementById('state'+idx).value = text;
+				});
+				socket.on('overlayInit_resp',(cube,clock,clock_pos) =>{
+					document.getElementById('clock').checked = clock;
+					document.getElementById('cube').checked = cube;
+					document.getElementById('clock_pos').value = clock_pos;
 				});
 				socket.on('player_init',(idx) =>{
 					document.getElementById('state'+idx).value = '';
@@ -359,18 +371,18 @@
 				<div class="column column-50">
 					<span class="label">Clock</span>
 					<label class="switch">
-						<input type="checkbox" onchange="clock(this)">
+						<input type="checkbox" id="clock" onchange="clock(this)">
 						<span class="slider round"></span>
 					</label>
-					<input type="range" min="0" max="3" style="width:80px" value="3" class="rangeslider" id="vol10" onInput="setClockPos(this)">
+					<input type="range" min="0" max="3" style="width:80px" value="3" class="rangeslider" id="clock_pos" onInput="setClockPos(this)">
 					<span style="margin-left:2rem" class="label">Cube</span>
 					<label class="switch">
-						<input type="checkbox" onchange="cube(this)">
+						<input type="checkbox" id="cube" onchange="cube(this)">
 						<span class="slider round"></span>
 					</label>
 					<span style="margin-left:2rem" class="label">Tweetdeck</span>
 					<label class="switch">
-						<input type="checkbox" onchange="tweetdeck(this)">
+						<input type="checkbox" id="tweetdeck" onchange="tweetdeck(this)">
 						<span class="slider round"></span>
 					</label>
 				</div>

@@ -83,6 +83,18 @@ process.on('SIGINT', () => {
 	exitHandler(() => process.exit(-1));
 });
 
+async function getVolumes()
+{
+	for(var i = 1;i<11;i++)
+	{
+		var vol = (await obs.call('GetInputVolume',{'inputName': 'P'+i})).inputVolumeDb;
+		io.emit('volume',i,Math.round(Math.pow((vol+100)/21.544,3)));
+	}
+	itemId = (await obs.call('GetSceneItemId',{'sceneName': 'Szene','sourceName': 'TD'})).sceneItemId;
+	tdEnabled = (await obs.call('GetSceneItemEnabled',{'sceneName': 'Szene',sceneItemId:itemId})).sceneItemEnabled;
+	io.emit('tweetdeck',tdEnabled);
+}
+
 io.on('connection', (socket) => {
 	console.log('conn');
 	socket.on('log', (text) => {
@@ -90,6 +102,11 @@ io.on('connection', (socket) => {
 	});
 	socket.on('ctrlinit', (text) => {
 		io.emit('ctrlinit');
+				
+		if(obsConnected){
+			getVolumes();
+		}
+
 	});
 	socket.on('ctrlinit_resp', (idx,url,text) => {
 		io.emit('ctrlinit_resp',idx,url,text);
@@ -108,6 +125,18 @@ io.on('connection', (socket) => {
 			.then(() => {
 				console.log(`Success! We're connected & authenticated.`);
 				obsConnected = true;
+				obs.on('InputVolumeChanged', ev => {
+					io.emit('volume',ev.inputName.substring(1),Math.round(Math.pow((ev.inputVolumeDb+100)/21.544,3)));
+				});
+				obs.on('SceneItemEnableStateChanged', async(ev) => {
+					var list = (await obs.call('GetSceneItemList',{'sceneName': 'Szene',})).sceneItems;
+					for(var item of list){
+						if((ev.sceneItemId == item.sceneItemId)&&(item.sourceName == 'TD'))
+						{
+							io.emit('tweetdeck',ev.sceneItemEnabled);
+						}
+					}
+				});
 				//startup();
 			})
 		}
@@ -172,6 +201,12 @@ io.on('connection', (socket) => {
 	});
 	socket.on('getGrid',(cb)=>{
 		cb(gridStore);
+	});
+	socket.on('overlayInit',()=>{
+		io.emit('overlayInit');
+	});
+	socket.on('overlayInit_resp',(cube,clock,clock_pos)=>{
+		io.emit('overlayInit_resp',cube,clock,clock_pos);
 	});
 	socket.on('grid', (grid, gridArr, id) => {
 		gridStore[id]=gridArr;

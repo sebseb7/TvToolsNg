@@ -453,16 +453,25 @@
 			$('#ticker1').addClass('ticker-out');
 		};
 
+		var cube_enabled = false;
+		var clock_enabled = true;
+		var clock_pos = 3;
 
+		socket.on('overlayInit',() => {
+			socket.emit('overlayInit_resp',cube_enabled,clock_enabled,clock_pos);
+		});
 		socket.on('clock',(enabled) => {
+			clock_enabled=enabled;
 			if(enabled) clock1_intop()
 			else clock1_outtop();
 		});
 		socket.on('cube',(enabled) => {
+			cube_enabled = enabled;
 			if(enabled) cube1_in()
 			else cube1_out();
 		});
 		socket.on('clockPos',(pos) => {
+			clock_pos = pos;
 			
 			if(pos==0){
 				$('#clock1').css('left','0px');
