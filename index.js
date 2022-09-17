@@ -174,14 +174,9 @@ io.on('connection', (socket) => {
 					}
 				}
 				if(data.plugin && data.plugin == 'dlive' && data.metadata){
-					
-					if(data.streams && data.streams['best'] && data.streams['best'].type=='hls'){
-						//io.emit('play_hls',idx,'hls',url,data.streams['best'].url,'noproxy');
-						io.emit('play_hls',idx,'hls',url,data.streams['best'].url);
-						socket.emit('state',idx,'dlive: '+data.metadata.author+' - '+data.metadata.title);
-					}else{
-						socket.emit('state',idx,'dlive: not live');
-					}
+				
+					//streamlink <url> 720p,best --player=ffmpeg -v -a '-i {playerinput} -hide_banner -loglevel warning -c copy -f mpegts srt://127.0.0.1:4445'
+
 				}
 				//console.log(data);
 			}
@@ -210,6 +205,35 @@ io.on('connection', (socket) => {
 	});
 	socket.on('grid', (grid, gridArr, id) => {
 		gridStore[id]=gridArr;
+		if(grid == '6x6'){
+			var gridMap = {};
+			for(const player of Object.keys(players)){
+
+				var gridPos = {};
+				for (var x = 0; x < 6; x++) {
+					for (var y = 0; y < 6; y++) {
+						if(gridArr[y][x] == player){
+							if( (undefined === gridPos.topLeftX) || gridPos.topLeftX>x){
+								gridPos.topLeftX=x;
+							}
+							if( (undefined === gridPos.topLeftY) || gridPos.topLeftY>y){
+								gridPos.topLeftY=y;
+							}
+							if((undefined === gridPos.bottomRightX) || gridPos.bottomRightX<x){
+								gridPos.bottomRightX=x;
+							}
+							if((undefined === gridPos.bottomRightY) || gridPos.bottomRightY<y){
+								gridPos.bottomRightY=y;
+							}
+						}
+					}
+				}
+
+				if(obsConnected){
+					setPosition(player,gridPos,grid);
+				}
+			}
+		}
 		if(grid == '4x4'){
 			var gridMap = {};
 			for(const player of Object.keys(players)){
@@ -218,7 +242,6 @@ io.on('connection', (socket) => {
 				for (var x = 0; x < 4; x++) {
 					for (var y = 0; y < 4; y++) {
 						if(gridArr[y][x] == player){
-							console.log(player,x,y);
 							if( (undefined === gridPos.topLeftX) || gridPos.topLeftX>x){
 								gridPos.topLeftX=x;
 							}
@@ -248,7 +271,6 @@ io.on('connection', (socket) => {
 				for (var x = 0; x < 3; x++) {
 					for (var y = 0; y < 3; y++) {
 						if(gridArr[y][x] == player){
-							console.log(player,x,y);
 							if( (undefined === gridPos.topLeftX) || gridPos.topLeftX>x){
 								gridPos.topLeftX=x;
 							}
@@ -290,39 +312,70 @@ io.on('connection', (socket) => {
 });
 					
 async function setPosition(player,gridPos,grid){
-	var itemId = (await obs.call('GetSceneItemId',{'sceneName': 'Szene','sourceName': 'P'+player})).sceneItemId;
-	//var tr = (await obs.call('GetSceneItemTransform',{'sceneName': 'Szene','sceneItemId': itemId}));
+	const itemId = (await obs.call('GetSceneItemId',{'sceneName': 'Szene','sourceName': 'P'+player})).sceneItemId;
 	
 	if(undefined === gridPos.topLeftX) {
 		obs.call('SetSceneItemTransform',{'sceneName': 'Szene','sceneItemId': itemId,sceneItemTransform:{positionY:0,positionX:1920}});
 	}else{
-		var scaleX = gridPos.bottomRightX-gridPos.topLeftX+1;
-		var scaleY = gridPos.bottomRightY-gridPos.topLeftY+1;
-		var scale = Math.min(scaleX,scaleY);
-		var addX=0;
-		var addY=0;
+		const transform = (await obs.call('GetSceneItemTransform',{'sceneName': 'Szene','sceneItemId': itemId})).sceneItemTransform;
 
-		if(scaleX>scaleY) addX = scaleX-scaleY;
-		if(scaleY>scaleX) addY = scaleY-scaleX;
-		
+		const width = (transform.sourceWidth - (transform.cropLeft + transform.cropRight))
+		const height = (transform.sourceHeight - (transform.cropTop + transform.cropBottom))
+
+		const gridX = gridPos.bottomRightX-gridPos.topLeftX+1;
+		const gridY = gridPos.bottomRightY-gridPos.topLeftY+1;
+
+		var boxX;
+		var boxY;
+		if(grid == '6x6'){
+			boxX = gridX*320;
+			boxY = gridY*180;
+		}
+		if(grid == '4x4'){
+			boxX = gridX*480;
+			boxY = gridY*270;
+		}
+		if(grid == '3x3'){
+			boxX = gridX*640;
+			boxY = gridY*360;
+		}
+
+		const scaleX = boxX/width;
+		const scaleY = boxY/height;
+		const scale = Math.min(scaleX,scaleY)
+
+		const addX=(boxX-(width*scale))/2;
+		const addY=(boxY-(height*scale))/2;
+
+		//console.log('box',gridX,gridY,boxX,boxY,width,height,scaleX,scaleY,boxX-(width*scale),boxY-(height*scale));
+		//console.log(transform);
+
+		if(grid == '6x6'){
+
+			obs.call('SetSceneItemTransform',{'sceneName': 'Szene','sceneItemId': itemId,sceneItemTransform:{
+				positionX:gridPos.topLeftX*320+addX,
+				positionY:gridPos.topLeftY*180+addY,
+				scaleX: scale,
+				scaleY: scale
+			}});
+		}
 		if(grid == '4x4'){
 
 			obs.call('SetSceneItemTransform',{'sceneName': 'Szene','sceneItemId': itemId,sceneItemTransform:{
-				positionX:gridPos.topLeftX*480+(addX*240),
-				positionY:gridPos.topLeftY*270+(addY*135),
-				scaleX: scale*0.5,
-				scaleY: scale*0.5
+				positionX:gridPos.topLeftX*480+addX,
+				positionY:gridPos.topLeftY*270+addY,
+				scaleX: scale,
+				scaleY: scale
 			}});
 		}
 		if(grid == '3x3'){
 			obs.call('SetSceneItemTransform',{'sceneName': 'Szene','sceneItemId': itemId,sceneItemTransform:{
-				positionX:gridPos.topLeftX*640+(addX*320),
-				positionY:gridPos.topLeftY*360+(addY*180),
-				scaleX: scale*0.666,
-				scaleY: scale*0.666
+				positionX:gridPos.topLeftX*640+addX,
+				positionY:gridPos.topLeftY*360+addY,
+				scaleX: scale,
+				scaleY: scale
 			}});
 		}
 	}
 
 }
-

@@ -194,6 +194,47 @@
 				elem.blur();
 			}
 			function activateGrid(elem){
+				if((elem.id == 'grid_9')){
+					socket.emit('grid','6x6',
+						[[document.getElementById(elem.id+'_1_1').innerHTML,
+						document.getElementById(elem.id+'_1_2').innerHTML,
+						document.getElementById(elem.id+'_1_3').innerHTML,
+						document.getElementById(elem.id+'_1_4').innerHTML,
+						document.getElementById(elem.id+'_1_5').innerHTML,
+						document.getElementById(elem.id+'_1_6').innerHTML],[
+						document.getElementById(elem.id+'_2_1').innerHTML,
+						document.getElementById(elem.id+'_2_2').innerHTML,
+						document.getElementById(elem.id+'_2_3').innerHTML,
+						document.getElementById(elem.id+'_2_4').innerHTML,
+						document.getElementById(elem.id+'_2_5').innerHTML,
+						document.getElementById(elem.id+'_2_6').innerHTML],[
+						document.getElementById(elem.id+'_3_1').innerHTML,
+						document.getElementById(elem.id+'_3_2').innerHTML,
+						document.getElementById(elem.id+'_3_3').innerHTML,
+						document.getElementById(elem.id+'_3_4').innerHTML,
+						document.getElementById(elem.id+'_3_5').innerHTML,
+						document.getElementById(elem.id+'_3_6').innerHTML],[
+						document.getElementById(elem.id+'_4_1').innerHTML,
+						document.getElementById(elem.id+'_4_2').innerHTML,
+						document.getElementById(elem.id+'_4_3').innerHTML,
+						document.getElementById(elem.id+'_4_4').innerHTML,
+						document.getElementById(elem.id+'_4_5').innerHTML,
+						document.getElementById(elem.id+'_4_6').innerHTML],[
+						document.getElementById(elem.id+'_5_1').innerHTML,
+						document.getElementById(elem.id+'_5_2').innerHTML,
+						document.getElementById(elem.id+'_5_3').innerHTML,
+						document.getElementById(elem.id+'_5_4').innerHTML,
+						document.getElementById(elem.id+'_5_5').innerHTML,
+						document.getElementById(elem.id+'_5_6').innerHTML],[
+						document.getElementById(elem.id+'_6_1').innerHTML,
+						document.getElementById(elem.id+'_6_2').innerHTML,
+						document.getElementById(elem.id+'_6_3').innerHTML,
+						document.getElementById(elem.id+'_6_4').innerHTML,
+						document.getElementById(elem.id+'_6_5').innerHTML,
+						document.getElementById(elem.id+'_6_6').innerHTML]],
+						elem.id
+					);
+				}
 				if((elem.id == 'grid_1')||(elem.id == 'grid_2')||(elem.id == 'grid_3')){
 					socket.emit('grid','4x4',
 						[[document.getElementById(elem.id+'_1_1').innerHTML,
@@ -241,9 +282,25 @@
 			}
 			function cube(elem){
 				socket.emit('cube',elem.checked);
+				
+				if( (elem.checked==true) && (document.getElementById('clock_pos').value == 3)){
+					document.getElementById('clock_pos').value = 2;
+					socket.emit('clockPos',2);
+				}
+				if( (elem.checked==false) && (document.getElementById('clock_pos').value == 2)){
+					setTimeout(function(){
+						document.getElementById('clock_pos').value = 3;
+						socket.emit('clockPos',3);
+					},1500);
+				}
+
 			}
 			function setClockPos(elem){
-				socket.emit('clockPos',elem.value);
+				if((elem.value == 3)&&( document.getElementById('cube').checked == true)){
+					document.getElementById('clock_pos').value = 2;
+				}else{
+					socket.emit('clockPos',elem.value);
+				};
 			}
 
 		</script>
@@ -486,8 +543,43 @@
 					<button id="grid_6" class="button button-outline" onClick="activateGrid(this)">activate</button>
 				</div>
 				<div class="column">
-				</div>
-				<div class="column">
+					<button id="grid_9_1_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_1_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_1_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_1_4" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_1_5" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_1_6" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_9_2_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_2_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_2_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_2_4" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_2_5" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_2_6" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_9_3_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_3_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_3_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_3_4" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_3_5" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_3_6" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_9_4_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_4_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_4_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_4_4" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_4_5" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_4_6" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_9_5_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_5_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_5_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_5_4" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_5_5" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_5_6" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_9_6_1" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_6_2" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_6_3" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_6_4" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_6_5" class="button button-outline button-slim" onClick="activateField(this)">X</button>
+					<button id="grid_9_6_6" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
+					<button id="grid_9" class="button button-outline" onClick="activateGrid(this)">activate</button>
 				</div>
 			</div>
 		</div>
