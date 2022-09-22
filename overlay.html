@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html><head>
+	<link rel="icon" href="data:;base64,iVBORw0KGgo=">
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.1/jquery.slim.min.js" integrity="sha512-yBpuflZmP5lwMzZ03hiCLzA94N0K2vgBtJgqQ2E1meJzmIBfjbb7k4Y23k2i2c/rIeSUGc7jojyIY5waK3ZxCQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 	<script src="/socket.io/socket.io.js"></script>
 	<style>
@@ -162,7 +163,7 @@
 			100% {margin-top:20px}
 		}
 		@keyframes refade-in {
-			0% {color:rgba(0,0,0,0);background-color: rgba(0,0,0,0);margin-right:-680px}
+			0% {color:rgba(0,0,0,0);background-color: rgba(0,0,0,0);margin-right:-1080px}
 			60% {color:rgba(0,0,0,0);}
 			80% {background-color: rgba(50,50,200,0.75);margin-right:0px}
 			100% {color:rgba(255,255,255,1);background-color:rgba(50,50,200,0.75);margin-right:0px}
@@ -171,7 +172,7 @@
 			0% {color:rgba(255,255,255,1);background-color:rgba(50,50,200,0.75);margin-right:0px}
 			1% {background-color: rgba(50,50,200,0.75);margin-right:0px}
 			70% {color:rgba(0,0,0,0);}
-			100% {color:rgba(0,0,0,0);background-color: rgba(0,0,0,0);margin-right:-680px}
+			100% {color:rgba(0,0,0,0);background-color: rgba(0,0,0,0);margin-right:-1080px}
 		}
 		div.output {
 			position:relative;
@@ -232,16 +233,16 @@
 		}
 		div.banner-top {
 			float:right;
-			width:600px;
+			width:1000px;
 			font-family:sans-serif;
 			font-weight:bold;
-			font-size:30pt;
-			margin-top:570px;
+			font-size:0pt;
+			margin-top:170px;
 			padding:10px;
 		}
 		div.banner-center {
 			float:right;
-			width:600px;
+			width:1000px;
 			font-family:sans-serif;
 			font-weight:bold;
 			font-size:30pt;
@@ -457,6 +458,23 @@
 		var clock_enabled = true;
 		var clock_pos = 3;
 
+		socket.on('image',(image) => {
+			console.log(image);
+			const img = new Image();
+			img.src = `data:image/jpg;base64,${image}`;
+			document.getElementById('banner1').innerHTML='';
+			const child = document.getElementById('banner1').appendChild(img);
+			child.style.maxHeight =  '720px';
+			child.style.maxWidth =  '900px';
+			banner1_in();
+			setTimeout(function(){
+				banner1_out();
+				setTimeout(function(){
+					document.getElementById('banner1').innerHTML='';
+				},1000);
+			},20000);
+		});
+
 		socket.on('overlayInit',() => {
 			socket.emit('overlayInit_resp',cube_enabled,clock_enabled,clock_pos);
 		});
@@ -553,7 +571,8 @@ socket.on('ctrl', function(item,value){
 			</div>
 		</div>
 		
-		<div id="banner1" class="banner-center banner-isout"><span id="banner1_red" style="color:red"></span> <span id="banner1_norm"></span>&nbsp;</div>
+		<div id="banner1" class="banner-center banner-isout"></div>
+		<div id="banner2" class="banner-center banner-isout"><span id="banner1_red" style="color:red"></span> <span id="banner1_norm"></span>&nbsp;</div>
 		
 		<div id="ticker1" class="ticker-wrap ticker-out invis">
 			<div class="ticker">

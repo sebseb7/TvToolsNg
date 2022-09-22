@@ -20,6 +20,8 @@
 		<video controls id="videoHls" style="display:none;width:960px;height:960px;"></video>
 
 		<script>
+			const host = window.location.hostname;
+			
 			class myLoader extends Hls.DefaultConfig.loader {
 				constructor(config) {
 					super(config);
@@ -33,9 +35,8 @@
 				}
 			}
 
-			const host = window.location.hostname;
 			
-			var olog = console.log;
+			//var olog = console.log;
 
 			/*console.log = function (message) {
 				socket.emit('log',message);
@@ -117,8 +118,6 @@
 					hls.attachMedia(video);
 					hls.on(Hls.Events.MANIFEST_PARSED, function() {
 						var promise = video.play();
-						
-						document.getElementById("videoHls").style.transform = "rotate(0deg)  translateY(-210px)";
 
 						if (promise !== undefined) {
 							promise.then(_ => {
@@ -140,6 +139,13 @@
 					};
 					video.onplaying = function() {
 						document.getElementById('videoHls').style.display='block';
+						var width = video.videoWidth
+						var height = video.videoHeight
+						if(height>width){
+							document.getElementById("videoHls").style.transform = "rotate(90deg)  translateX(-210px)";
+						}else{
+							document.getElementById("videoHls").style.transform = "rotate(0deg)  translateY(-210px)";
+						}
 					};
 					hls_player=hls;
 				};

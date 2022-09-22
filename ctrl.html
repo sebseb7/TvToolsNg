@@ -115,6 +115,15 @@
 				socket.on('state',(idx,text) =>{
 					document.getElementById('state'+idx).value = text;
 				});
+				socket.on('pos',(idx,x,y,w,h) =>{
+					const canvas = document.getElementById('pos'+idx);
+					const ctx = canvas.getContext("2d");
+					ctx.clearRect(0, 0, canvas.width, canvas.height);
+					if(x != 1920){
+						ctx.fillStyle = "green";
+						ctx.fillRect(x/38.5, y/38.5, w/38.5, h/38.5);
+					}
+				});
 				socket.on('volume',(idx,vol) =>{
 					document.getElementById("vol"+idx).value = vol;
 				});
@@ -132,6 +141,9 @@
 				});
 				socket.on('player_init',(idx) =>{
 					document.getElementById('state'+idx).value = '';
+				});
+				socket.on('ffmpeg_log',(line) =>{
+					document.getElementById('hls_log').value = line;
 				});
 			}
 			function load(index){
@@ -302,6 +314,13 @@
 					socket.emit('clockPos',elem.value);
 				};
 			}
+			function stop_hls(){
+				socket.emit('stop_hls');
+			}
+			function start_hls(){
+				var url = document.getElementById('hls').value;
+				socket.emit('start_hls',url);
+			}
 
 		</script>
 	</head>
@@ -310,101 +329,111 @@
 		<div class="container">
 			<div class="row"><div class="column column-50">&nbsp;</div></div>
 			<div class="row">
-				<div class="column column-30"><input type="text" placeholder="" value="" id="url1"></div>
-				<div class="column column-20">
+				<div class="column column-30"><input type="text" style="width:10%" placeholder="" value="1"><input style="width:90%" type="text" placeholder="" value="" id="url1"></div>
+				<div class="column column-30">
 					<button class="button button-outline" onClick="load(1)">Load</button>
 					<button class="button button-outline" onClick="stop(1)">Clear</button>
 					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol1" onInput="setVol(this)">
+					<canvas id="pos1" width="50" height="28" style="background-color:#fff;margin-left:10px;vertical-align: middle;"></canvas>
 				</div>
 				<div class="column"><input type="text" placeholder="" disabled id="state1"></div>
 				<div class="column"><input type="text" placeholder="" disabled id="info1"></div>
 			</div>
 			<div class="row">
-				<div class="column column-30"><input type="text" placeholder="" value="" id="url2"></div>
-				<div class="column column-20">
+				<div class="column column-30"><input type="text" style="width:10%" placeholder="" value="2"><input style="width:90%" type="text" placeholder="" value="" id="url2"></div>
+				<div class="column column-30">
 					<button class="button button-outline" onClick="load(2)">Load</button>
 					<button class="button button-outline" onClick="stop(2)">Clear</button>
 					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol2" onInput="setVol(this)">
+					<canvas id="pos2" width="50" height="28" style="background-color:#fff;margin-left:10px;vertical-align: middle;"></canvas>
 				</div>
 				<div class="column"><input type="text" placeholder="" disabled id="state2"></div>
 				<div class="column"><input type="text" placeholder="" disabled id="info2"></div>
 			</div>
 			<div class="row">
-				<div class="column column-30"><input type="text" placeholder="" value="" id="url3"></div>
-				<div class="column column-20">
+				<div class="column column-30"><input type="text" style="width:10%" placeholder="" value="3"><input style="width:90%" type="text" placeholder="" value="" id="url3"></div>
+				<div class="column column-30">
 					<button class="button button-outline" onClick="load(3)">Load</button>
 					<button class="button button-outline" onClick="stop(3)">Clear</button>
 					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol3" onInput="setVol(this)">
+					<canvas id="pos3" width="50" height="28" style="background-color:#fff;margin-left:10px;vertical-align: middle;"></canvas>
 				</div>
 				<div class="column"><input type="text" placeholder="" disabled id="state3"></div>
 				<div class="column"><input type="text" placeholder="" disabled id="info3"></div>
 			</div>
 			<div class="row">
-				<div class="column column-30"><input type="text" placeholder="" value="" id="url4"></div>
-				<div class="column column-20">
+				<div class="column column-30"><input type="text" style="width:10%" placeholder="" value="4"><input style="width:90%" type="text" placeholder="" value="" id="url4"></div>
+				<div class="column column-30">
 					<button class="button button-outline" onClick="load(4)">Load</button>
 					<button class="button button-outline" onClick="stop(4)">Clear</button>
 					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol4" onInput="setVol(this)">
+					<canvas id="pos4" width="50" height="28" style="background-color:#fff;margin-left:10px;vertical-align: middle;"></canvas>
 				</div>
 				<div class="column"><input type="text" placeholder="" disabled id="state4"></div>
 				<div class="column"><input type="text" placeholder="" disabled id="info4"></div>
 			</div>
 			<div class="row">
-				<div class="column column-30"><input type="text" placeholder="" value="" id="url5"></div>
-				<div class="column column-20">
+				<div class="column column-30"><input type="text" style="width:10%" placeholder="" value="5"><input style="width:90%" type="text" placeholder="" value="" id="url5"></div>
+				<div class="column column-30">
 					<button class="button button-outline" onClick="load(5)">Load</button>
 					<button class="button button-outline" onClick="stop(5)">Clear</button>
 					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol5" onInput="setVol(this)">
+					<canvas id="pos5" width="50" height="28" style="background-color:#fff;margin-left:10px;vertical-align: middle;"></canvas>
 				</div>
 				<div class="column"><input type="text" placeholder="" disabled id="state5"></div>
 				<div class="column"><input type="text" placeholder="" disabled id="info5"></div>
 			</div>
 			<div class="row">
-				<div class="column column-30"><input type="text" placeholder="" value="" id="url6"></div>
-				<div class="column column-20">
+				<div class="column column-30"><input type="text" style="width:10%" placeholder="" value="6"><input style="width:90%" type="text" placeholder="" value="" id="url6"></div>
+				<div class="column column-30">
 					<button class="button button-outline" onClick="load(6)">Load</button>
 					<button class="button button-outline" onClick="stop(6)">Clear</button>
 					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol6" onInput="setVol(this)">
+					<canvas id="pos6" width="50" height="28" style="background-color:#fff;margin-left:10px;vertical-align: middle;"></canvas>
 				</div>
 				<div class="column"><input type="text" placeholder="" disabled id="state6"></div>
 				<div class="column"><input type="text" placeholder="" disabled id="info6"></div>
 			</div>
 			<div class="row">
-				<div class="column column-30"><input type="text" placeholder="" value="" id="url7"></div>
-				<div class="column column-20">
+				<div class="column column-30"><input type="text" style="width:10%" placeholder="" value="7"><input style="width:90%" type="text" placeholder="" value="" id="url7"></div>
+				<div class="column column-30">
 					<button class="button button-outline" onClick="load(7)">Load</button>
 					<button class="button button-outline" onClick="stop(7)">Clear</button>
 					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol7" onInput="setVol(this)">
+					<canvas id="pos7" width="50" height="28" style="background-color:#fff;margin-left:10px;vertical-align: middle;"></canvas>
 				</div>
 				<div class="column"><input type="text" placeholder="" disabled id="state7"></div>
 				<div class="column"><input type="text" placeholder="" disabled id="info7"></div>
 			</div>
 			<div class="row">
-				<div class="column column-30"><input type="text" placeholder="" value="" id="url8"></div>
-				<div class="column column-20">
+				<div class="column column-30"><input type="text" style="width:10%" placeholder="" value="8"><input style="width:90%" type="text" placeholder="" value="" id="url8"></div>
+				<div class="column column-30">
 					<button class="button button-outline" onClick="load(8)">Load</button>
 					<button class="button button-outline" onClick="stop(8)">Clear</button>
 					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol8" onInput="setVol(this)">
+					<canvas id="pos8" width="50" height="28" style="background-color:#fff;margin-left:10px;vertical-align: middle;"></canvas>
 				</div>
 				<div class="column"><input type="text" placeholder="" disabled id="state8"></div>
 				<div class="column"><input type="text" placeholder="" disabled id="info8"></div>
 			</div>
 			<div class="row">
-				<div class="column column-30"><input type="text" placeholder="" value="" id="url9"></div>
-				<div class="column column-20">
+				<div class="column column-30"><input type="text" style="width:10%" placeholder="" value="9"><input style="width:90%" type="text" placeholder="" value="" id="url9"></div>
+				<div class="column column-30">
 					<button class="button button-outline" onClick="load(9)">Load</button>
 					<button class="button button-outline" onClick="stop(9)">Clear</button>
 					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol9" onInput="setVol(this)">
+					<canvas id="pos9" width="50" height="28" style="background-color:#fff;margin-left:10px;vertical-align: middle;"></canvas>
 				</div>
 				<div class="column"><input type="text" placeholder="" disabled id="state9"></div>
 				<div class="column"><input type="text" placeholder="" disabled id="info9"></div>
 			</div>
 			<div class="row">
-				<div class="column column-30"><input type="text" placeholder="" value="" id="url10"></div>
-				<div class="column column-20">
+				<div class="column column-30"><input type="text" style="width:10%" placeholder="" value="10"><input style="width:90%" type="text" placeholder="" value="" id="url10"></div>
+				<div class="column column-30">
 					<button class="button button-outline" onClick="load(10)">Load</button>
 					<button class="button button-outline" onClick="stop(10)">Clear</button>
 					<input type="range" min="0" max="100" style="width:80px" value="100" class="rangeslider" id="vol10" onInput="setVol(this)">
+					<canvas id="pos10" width="50" height="28" style="background-color:#fff;margin-left:10px;vertical-align: middle;"></canvas>
 				</div>
 				<div class="column"><input type="text" placeholder="" disabled id="state10"></div>
 				<div class="column"><input type="text" placeholder="" disabled id="info10"></div>
@@ -581,6 +610,17 @@
 					<button id="grid_9_6_6" class="button button-outline button-slim" onClick="activateField(this)">X</button><br/>
 					<button id="grid_9" class="button button-outline" onClick="activateGrid(this)">activate</button>
 				</div>
+			</div>
+			<div class="row"><div class="column column-50">&nbsp;</div></div>
+			<div class="row">
+				<div class="column column-30"><input type="text" placeholder="" value="" id="hls"></div>
+				<div class="column column-20">
+					<button class="button button-outline" onClick="start_hls()">hls</button>
+					<button class="button button-outline" onClick="stop_hls()">stop</button>
+				</div>
+			</div>
+			<div class="row">
+				<div class="column column-30"><input type="text" placeholder="" value="" id="hls_log"></div>
 			</div>
 		</div>
 
