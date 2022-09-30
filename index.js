@@ -14,6 +14,7 @@ const {EventSubscription} = require('obs-websocket-js');
 const obs = new OBSWebSocket();
 const jsonfile = require('jsonfile');
 const TelegramBot = require('node-telegram-bot-api');
+const BezierEasing = require('bezier-easing');
 cors_proxy.createServer({
 	originWhitelist: [], // Allow all origins
 	//requireHeader: ['origin', 'x-requested-with'],
@@ -304,7 +305,7 @@ io.on('connection', (socket) => {
 		gridStore[id]=gridArr;
 		if(grid == '6x6'){
 			var gridMap = {};
-			for(const player of Object.keys(players)){
+			for(const player of Object.keys(players).concat([11,12,13,141,15,16])){
 
 				var gridPos = {};
 				for (var x = 0; x < 6; x++) {
@@ -333,7 +334,7 @@ io.on('connection', (socket) => {
 		}
 		if(grid == '4x4'){
 			var gridMap = {};
-			for(const player of Object.keys(players)){
+			for(const player of Object.keys(players).concat([11,12,13,141,15,16])){
 
 				var gridPos = {};
 				for (var x = 0; x < 4; x++) {
@@ -362,7 +363,7 @@ io.on('connection', (socket) => {
 		}
 		if(grid == '3x3'){
 			var gridMap = {};
-			for(const player of Object.keys(players)){
+			for(const player of Object.keys(players).concat([11,12,13,141,15,16])){
 
 				var gridPos = {};
 				for (var x = 0; x < 3; x++) {
@@ -407,69 +408,100 @@ io.on('connection', (socket) => {
 		io.emit('clockPos',left);
 	});
 });
-					
+
+var animateBlocked={};
+var animateQueue={};
+
 async function setPosition(player,gridPos,grid){
-	const itemId = (await obs.call('GetSceneItemId',{'sceneName': 'Szene','sourceName': 'P'+player})).sceneItemId;
-	const transform = (await obs.call('GetSceneItemTransform',{'sceneName': 'Szene','sceneItemId': itemId})).sceneItemTransform;
-	
-	if(undefined === gridPos.topLeftX) {
-		//obs.call('SetSceneItemTransform',{'sceneName': 'Szene','sceneItemId': itemId,sceneItemTransform:{positionY:0,positionX:1920}});
-		tileAnimate(itemId,30,1,transform.positionX,transform.positionY,transform.scaleX,transform.scaleY,1920,transform.positionY,transform.scaleX,transform.scaleY);
-	}else{
 
-		const width = (transform.sourceWidth - (transform.cropLeft + transform.cropRight))
-		const height = (transform.sourceHeight - (transform.cropTop + transform.cropBottom))
+	obs.call('GetSceneItemId',{'sceneName': 'Szene','sourceName': 'P'+player}).then(async(data)=>{
+		const itemId = data.sceneItemId;
+		const transform = (await obs.call('GetSceneItemTransform',{'sceneName': 'Szene','sceneItemId': itemId})).sceneItemTransform;
+		
+		if(undefined === gridPos.topLeftX) {
+			//obs.call('SetSceneItemTransform',{'sceneName': 'Szene','sceneItemId': itemId,sceneItemTransform:{positionY:0,positionX:1920}});
+			if (!animateBlocked[itemId] || animateBlocked[itemId]==false){
+				tileAnimate(itemId,[0.41,0.18,0.55,0.64],50,1,transform.positionX,transform.positionY,transform.scaleX,transform.scaleY,1920,transform.positionY,transform.scaleX,transform.scaleY);
+			}else{
+				if(!animateQueue[itemId])
+					animateQueue[itemId]=[];
+				animateQueue[itemId].push([player,gridPos,grid]);
+			}
+		}else{
 
-		const gridX = gridPos.bottomRightX-gridPos.topLeftX+1;
-		const gridY = gridPos.bottomRightY-gridPos.topLeftY+1;
+			const width = (transform.sourceWidth - (transform.cropLeft + transform.cropRight))
+			const height = (transform.sourceHeight - (transform.cropTop + transform.cropBottom))
 
-		var tileX;
-		var tileY;
-		if(grid == '6x6'){
-			tileX=320;
-			tileY=180;
+			const gridX = gridPos.bottomRightX-gridPos.topLeftX+1;
+			const gridY = gridPos.bottomRightY-gridPos.topLeftY+1;
+
+			var tileX;
+			var tileY;
+			if(grid == '6x6'){
+				tileX=320;
+				tileY=180;
+			}
+			if(grid == '4x4'){
+				tileX=480;
+				tileY=270;
+			}
+			if(grid == '3x3'){
+				tileX=640;
+				tileY=360;
+			}
+
+			var	boxX = gridX*tileX;
+			var	boxY = gridY*tileY;
+			const scaleX = boxX/width;
+			const scaleY = boxY/height;
+			const scale = Math.min(scaleX,scaleY)
+
+			const addX=(boxX-(width*scale))/2;
+			const addY=(boxY-(height*scale))/2;
+
+	/*
+			obs.call('SetSceneItemTransform',{'sceneName': 'Szene','sceneItemId': itemId,sceneItemTransform:{
+				positionX:gridPos.topLeftX*tileX+addX,
+				positionY:gridPos.topLeftY*tileY+addY,
+				scaleX: scale,
+				scaleY: scale
+			}});
+	*/
+
+			if (!animateBlocked[itemId] || animateBlocked[itemId]==false){
+				tileAnimate(itemId,[0.42,0.14,0.18,1],150,1,transform.positionX,transform.positionY,transform.scaleX,transform.scaleY,gridPos.topLeftX*tileX+addX,gridPos.topLeftY*tileY+addY,scale,scale);
+			}else{
+				if(!animateQueue[itemId])
+					animateQueue[itemId]=[];
+				animateQueue[itemId].push([player,gridPos,grid]);
+			}
 		}
-		if(grid == '4x4'){
-			tileX=480;
-			tileY=270;
-		}
-		if(grid == '3x3'){
-			tileX=640;
-			tileY=360;
-		}
 
-		var	boxX = gridX*tileX;
-		var	boxY = gridY*tileY;
-		const scaleX = boxX/width;
-		const scaleY = boxY/height;
-		const scale = Math.min(scaleX,scaleY)
+	}).catch((e)=>{});
 
-		const addX=(boxX-(width*scale))/2;
-		const addY=(boxY-(height*scale))/2;
 
-/*
-		obs.call('SetSceneItemTransform',{'sceneName': 'Szene','sceneItemId': itemId,sceneItemTransform:{
-			positionX:gridPos.topLeftX*tileX+addX,
-			positionY:gridPos.topLeftY*tileY+addY,
-			scaleX: scale,
-			scaleY: scale
-		}});
-*/
-
-		tileAnimate(itemId,30,1,transform.positionX,transform.positionY,transform.scaleX,transform.scaleY,gridPos.topLeftX*tileX+addX,gridPos.topLeftY*tileY+addY,scale,scale);
-	}
 }
-function tileAnimate(itemId,steps,step,opX,opY,osX,osY,pX,pY,sX,sY){
+
+async function tileAnimate(itemId,curve,steps,step,opX,opY,osX,osY,pX,pY,sX,sY){
+		
+		animateBlocked[itemId]=true;
+		const easing = BezierEasing(curve[0],curve[1],curve[2],curve[3]);
 
 		obs.call('SetSceneItemTransform',{'sceneName': 'Szene','sceneItemId': itemId,sceneItemTransform:{
-			positionX:opX-(((opX-pX)/steps)*step),
-			positionY:opY-(((opY-pY)/steps)*step),
-			scaleX: osX-(((osX-sX)/steps)*step),
-			scaleY: osY-(((osY-sY)/steps)*step)
+			positionX:opX-(((opX-pX)/steps)*easing(step/steps)*steps),
+			positionY:opY-(((opY-pY)/steps)*easing(step/steps)*steps),
+			scaleX: osX-(((osX-sX)/steps)*easing(step/steps)*steps),
+			scaleY: osY-(((osY-sY)/steps)*easing(step/steps)*steps)
 		}});
 
 		if(steps != step){
-			setTimeout(function(){tileAnimate(itemId,steps,step+1,opX,opY,osX,osY,pX,pY,sX,sY)},10);
+			setTimeout(function(){tileAnimate(itemId,curve,steps,step+1,opX,opY,osX,osY,pX,pY,sX,sY)},10);
+		}else{
+				animateBlocked[itemId]=false;
+			if(animateQueue[itemId] && animateQueue[itemId].length > 0){
+				var params = animateQueue[itemId].shift();
+				setPosition(...params);
+			}
 		}
 
 }
